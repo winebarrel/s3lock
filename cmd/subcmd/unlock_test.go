@@ -11,7 +11,7 @@ import (
 	"github.com/winebarrel/s3lock/cmd/subcmd"
 )
 
-func TestUnockCmd(t *testing.T) {
+func TestUnlockCmd(t *testing.T) {
 	s3cli := testNewS3Client(t)
 	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
