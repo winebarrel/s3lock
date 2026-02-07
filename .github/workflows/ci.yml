@@ -23,5 +23,7 @@ jobs:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@v9
       - name: Start S3Mock
-        run: docker compose up -d
+        run: |
+          docker compose up -d
+          for i in {1..60}; do curl -sSf localhost:9090 > /dev/null && break; sleep 1; done
       - run: make
