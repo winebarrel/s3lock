@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	ErrLockAlreadyHeld = errors.New("Lock already held")
-	ErrAlreadyUnlocked = errors.New("Already unlocked")
+	ErrLockAlreadyHeld = errors.New("lock already held")
+	ErrAlreadyUnlocked = errors.New("already unlocked")
 )
 
 type Object struct {
