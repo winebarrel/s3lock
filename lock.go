@@ -54,7 +54,7 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 
 		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
 			respErr.Response.StatusCode == http.StatusPreconditionFailed {
-			return nil, ErrLockAlreadyHeld
+			return nil, errors.Join(ErrLockAlreadyHeld, err)
 		}
 
 		return nil, err
