@@ -27,15 +27,15 @@ func testNewS3Client(t *testing.T) *s3.Client {
 	return client
 }
 
-func testDeleteObject(t *testing.T, client *s3.Client, bukect string, key string) {
+func testDeleteObject(t *testing.T, client *s3.Client, bucket string, key string) {
 	t.Helper()
-	input := &s3.DeleteObjectInput{Bucket: aws.String(bukect), Key: aws.String(key)}
+	input := &s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)}
 	client.DeleteObject(context.Background(), input)
 }
 
-func testGetObject(t *testing.T, client *s3.Client, bukect string, key string) (string, error) {
+func testGetObject(t *testing.T, client *s3.Client, bucket string, key string) (string, error) {
 	t.Helper()
-	input := &s3.GetObjectInput{Bucket: aws.String(bukect), Key: aws.String(key)}
+	input := &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)}
 	output, err := client.GetObject(context.Background(), input)
 
 	if err != nil {
@@ -53,9 +53,9 @@ func testGetObject(t *testing.T, client *s3.Client, bukect string, key string) (
 	return string(b), nil
 }
 
-func testPutObject(t *testing.T, client *s3.Client, bukect string, key string, body string) *s3.PutObjectOutput {
+func testPutObject(t *testing.T, client *s3.Client, bucket string, key string, body string) *s3.PutObjectOutput {
 	t.Helper()
-	input := &s3.PutObjectInput{Bucket: aws.String(bukect), Key: aws.String(key), Body: strings.NewReader(body)}
+	input := &s3.PutObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), Body: strings.NewReader(body)}
 	output, err := client.PutObject(context.Background(), input)
 
 	if err != nil {
