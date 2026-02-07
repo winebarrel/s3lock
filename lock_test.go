@@ -35,6 +35,10 @@ func TestLock(t *testing.T) {
 	// Confirm that the lock object does not exist
 	_, err = testGetObject(t, s3cli, "s3lock-test", "lock-obj")
 	require.ErrorContains(t, err, "The specified key does not exist")
+
+	// Already unlocked
+	err = lock.Unlock(t.Context())
+	require.ErrorIs(t, err, s3lock.ErrAlreadyUnlocked)
 }
 
 func TestLockError(t *testing.T) {
