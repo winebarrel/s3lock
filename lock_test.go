@@ -13,10 +13,7 @@ import (
 
 func TestLock(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	// Lock
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
@@ -43,10 +40,7 @@ func TestLock(t *testing.T) {
 
 func TestLockError(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
 
@@ -80,10 +74,7 @@ func TestLockFatal(t *testing.T) {
 
 func TestMarshalJSON(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	// Lock
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
@@ -115,10 +106,7 @@ func TestMarshalJSON(t *testing.T) {
 
 func TestMD5Collision(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	id1 := "TEXTCOLLBYfGiJUETHQ4hAcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak"
 	id2 := "TEXTCOLLBYfGiJUETHQ4hEcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak"
@@ -154,10 +142,7 @@ func TestMD5Collision(t *testing.T) {
 
 func TestLockWait1stOK(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
 	lock, err := obj.LockWait(t.Context())
@@ -167,12 +152,10 @@ func TestLockWait1stOK(t *testing.T) {
 
 func TestLockWait2ndOK(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+	done := make(chan struct{})
 
 	{
 		lock, err := obj.Lock(t.Context())
@@ -181,20 +164,19 @@ func TestLockWait2ndOK(t *testing.T) {
 			time.Sleep(1 * time.Second)
 			err := lock.Unlock()
 			require.NoError(t, err)
+			close(done)
 		}()
 	}
 
 	lock, err := obj.LockWait(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, lock)
+	<-done
 }
 
 func TestLockWaitError(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
 
@@ -210,10 +192,7 @@ func TestLockWaitError(t *testing.T) {
 
 func TestLockWaitContextError(t *testing.T) {
 	s3cli := testNewS3Client(t)
-
-	t.Cleanup(func() {
-		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
-	})
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
 
@@ -241,6 +220,7 @@ func TestLockWaitFatal(t *testing.T) {
 
 func TestAlreadyUnlocked(t *testing.T) {
 	s3cli := testNewS3Client(t)
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
 	// Create lock from JSON
 	lock, err := s3lock.NewLockFromJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`))
