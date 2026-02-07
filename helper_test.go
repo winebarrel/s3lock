@@ -13,9 +13,7 @@ import (
 
 func testNewS3Client(t *testing.T) *s3.Client {
 	t.Helper()
-	cfg, err := config.LoadDefaultConfig(t.Context(), config.WithRetryer(func() aws.Retryer {
-		return aws.NopRetryer{}
-	}))
+	cfg, err := config.LoadDefaultConfig(t.Context())
 
 	if err != nil {
 		t.Fatal(err)
