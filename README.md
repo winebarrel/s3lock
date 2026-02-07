@@ -86,7 +86,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	cfg, _ := config.LoadDefaultConfig(context.Background())
+	cfg, _ := config.LoadDefaultConfig(ctx)
 	s3cli := s3.NewFromConfig(cfg)
 
 	obj := s3lock.New(s3cli, "my-bucket", "lock-object")
