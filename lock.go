@@ -165,7 +165,7 @@ func JSONToLock(s3Client *s3.Client, data []byte) (*lock, error) {
 	return l, nil
 }
 
-var lockWaitInterval = 1 * time.Second
+var LockWaitInterval = 1 * time.Second
 
 func (obj *Object) LockWait(ctx context.Context) (*lock, error) {
 	// first time
@@ -180,7 +180,7 @@ func (obj *Object) LockWait(ctx context.Context) (*lock, error) {
 	}
 
 	// after the second time
-	ticker := time.NewTicker(lockWaitInterval)
+	ticker := time.NewTicker(LockWaitInterval)
 	defer ticker.Stop()
 	lastErr := err
 
