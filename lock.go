@@ -41,7 +41,12 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 	output, err := obj.s3.PutObject(ctx, input)
 
 	if err != nil {
-		return nil, err
+		if strings.Contains(err.Error(), "PreconditionFailed") {
+			// failed to acquire lock
+			return nil, nil
+		} else {
+			return nil, err
+		}
 	}
 
 	l := &lock{
