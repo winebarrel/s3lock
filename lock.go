@@ -59,7 +59,7 @@ func (obj *Object) Lock(ctx context.Context) (*Lock, error) {
 
 		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
 			respErr.Response.StatusCode == http.StatusPreconditionFailed {
-			return nil, errors.Join(ErrLockAlreadyHeld, err)
+			return nil, ErrLockAlreadyHeld
 		}
 
 		return nil, err
@@ -100,6 +100,16 @@ func (l *Lock) validate(ctx context.Context) error {
 	output, err := l.s3.GetObject(ctx, input)
 
 	if err != nil {
+		var (
+			opeErr  *smithy.OperationError
+			respErr *awshttp.ResponseError
+		)
+
+		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
+			respErr.Response.StatusCode == http.StatusNotFound {
+			return ErrAlreadyUnlocked
+		}
+
 		return err
 	}
 
@@ -165,7 +175,7 @@ func (l *Lock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-func JSONToLock(s3Client *s3.Client, data []byte) (*Lock, error) {
+func NewLockFromJSON(s3Client *s3.Client, data []byte) (*Lock, error) {
 	j := lockJSON{}
 	err := json.Unmarshal(data, &j)
 
