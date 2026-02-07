@@ -182,7 +182,7 @@ func (obj *Object) LockWait(ctx context.Context) (*lock, error) {
 	// after the second time
 	ticker := time.NewTicker(lockWaitInterval)
 	defer ticker.Stop()
-	var lastErr error
+	lastErr := err
 
 L:
 	for {
@@ -204,5 +204,5 @@ L:
 		}
 	}
 
-	return nil, errors.Join(ErrLockAlreadyHeld, lastErr)
+	return nil, lastErr
 }

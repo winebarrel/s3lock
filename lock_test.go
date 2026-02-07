@@ -198,10 +198,30 @@ func TestLockWaitError(t *testing.T) {
 	_, err := obj.Lock(t.Context())
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 	_, err = obj.LockWait(ctx)
 	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
+}
+
+func TestLockWaitContextError(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	t.Cleanup(func() {
+		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+	})
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	// Not unlock
+	_, err := obj.Lock(t.Context())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 0)
+	defer cancel()
+	_, err = obj.LockWait(ctx)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
 }
 
 func TestLockWaitFatal(t *testing.T) {
