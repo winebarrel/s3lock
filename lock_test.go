@@ -73,7 +73,7 @@ func TestMarshalJSON(t *testing.T) {
 	lock, err := obj.Lock(t.Context())
 	require.NoError(t, err)
 
-	j, err := json.Marshal(&lock)
+	j, err := json.Marshal(lock)
 	require.NoError(t, err)
 	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":"\\"\w{32}\\""}`, string(j))
 
