@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,7 +18,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrLockAlreadyHeld = errors.New("lock already held")
+var (
+	ErrLockAlreadyHeld = errors.New("lock already held")
+	ErrAlreadyUnlocked = errors.New("already unlocked")
+)
 
 type Object struct {
 	s3     *s3.Client
@@ -35,7 +39,7 @@ func New(s3Client *s3.Client, bucket string, key string) *Object {
 	return obj
 }
 
-func (obj *Object) Lock(ctx context.Context) (*lock, error) {
+func (obj *Object) Lock(ctx context.Context) (*Lock, error) {
 	id := uuid.NewString()
 
 	input := &s3.PutObjectInput{
@@ -61,7 +65,7 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 		return nil, err
 	}
 
-	l := &lock{
+	l := &Lock{
 		s3:     obj.s3,
 		bucket: obj.bucket,
 		key:    obj.key,
@@ -72,15 +76,21 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 	return l, nil
 }
 
-type lock struct {
-	s3     *s3.Client
-	bucket string
-	key    string
-	id     string
-	etag   string
+type Lock struct {
+	mu       sync.Mutex
+	unlocked bool
+	s3       *s3.Client
+	bucket   string
+	key      string
+	id       string
+	etag     string
 }
 
-func (l *lock) validate(ctx context.Context) error {
+func (l *Lock) validate(ctx context.Context) error {
+	if l.unlocked {
+		return ErrAlreadyUnlocked
+	}
+
 	input := &s3.GetObjectInput{
 		Bucket:  aws.String(l.bucket),
 		Key:     aws.String(l.key),
@@ -110,10 +120,11 @@ func (l *lock) validate(ctx context.Context) error {
 	return nil
 }
 
-func (l *lock) Unlock(ctx context.Context) error {
-	err := l.validate(ctx)
+func (l *Lock) Unlock(ctx context.Context) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
-	if err != nil {
+	if err := l.validate(ctx); err != nil {
 		return err
 	}
 
@@ -123,7 +134,11 @@ func (l *lock) Unlock(ctx context.Context) error {
 		IfMatch: aws.String(l.etag),
 	}
 
-	_, err = l.s3.DeleteObject(ctx, input)
+	_, err := l.s3.DeleteObject(ctx, input)
+
+	if err == nil {
+		l.unlocked = true
+	}
 
 	return err
 }
@@ -135,7 +150,7 @@ type lockJSON struct {
 	ETag   string
 }
 
-func (l *lock) MarshalJSON() ([]byte, error) {
+func (l *Lock) MarshalJSON() ([]byte, error) {
 	j := &lockJSON{
 		Bucket: l.bucket,
 		Key:    l.key,
@@ -146,7 +161,7 @@ func (l *lock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-func JSONToLock(s3Client *s3.Client, data []byte) (*lock, error) {
+func JSONToLock(s3Client *s3.Client, data []byte) (*Lock, error) {
 	j := lockJSON{}
 	err := json.Unmarshal(data, &j)
 
@@ -154,7 +169,7 @@ func JSONToLock(s3Client *s3.Client, data []byte) (*lock, error) {
 		return nil, err
 	}
 
-	l := &lock{
+	l := &Lock{
 		s3:     s3Client,
 		bucket: j.Bucket,
 		key:    j.Key,
@@ -167,7 +182,7 @@ func JSONToLock(s3Client *s3.Client, data []byte) (*lock, error) {
 
 var LockWaitInterval = 1 * time.Second
 
-func (obj *Object) LockWait(ctx context.Context) (*lock, error) {
+func (obj *Object) LockWait(ctx context.Context) (*Lock, error) {
 	// first time
 	lock, err := obj.Lock(ctx)
 
