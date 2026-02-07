@@ -1,9 +1,8 @@
-package s3lock_test
+package subcmd_test
 
 import (
 	"context"
 	"io"
-	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -53,16 +52,4 @@ func testGetObject(t *testing.T, client *s3.Client, bucket string, key string) (
 	}
 
 	return string(b), nil
-}
-
-func testPutObject(t *testing.T, client *s3.Client, bucket string, key string, body string) *s3.PutObjectOutput {
-	t.Helper()
-	input := &s3.PutObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), Body: strings.NewReader(body)}
-	output, err := client.PutObject(context.Background(), input)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return output
 }

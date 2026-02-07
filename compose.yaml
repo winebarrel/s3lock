@@ -1,5 +1,5 @@
 services:
-  localstack:
+  s3mock:
     # https://github.com/adobe/S3Mock
     image: adobe/s3mock
     ports:
