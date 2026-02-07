@@ -17,6 +17,12 @@ $ s3lock unlock object.lock
 s3lock: error: already unlocked
 ```
 
+## Installation
+
+```
+brew install winebarrel/s3lock/s3lock
+```
+
 ## Usage
 
 ```
