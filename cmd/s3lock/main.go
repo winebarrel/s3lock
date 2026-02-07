@@ -23,7 +23,7 @@ func main() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	kctx.FatalIfErrorf(err)
 	err = kctx.Run(&subcmd.Context{
-		Output: os.Stderr,
+		Output: os.Stdout,
 		S3:     s3.NewFromConfig(cfg),
 	})
 	kctx.FatalIfErrorf(err)
