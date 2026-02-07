@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
 )
 
@@ -44,11 +47,17 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 	output, err := obj.s3.PutObject(ctx, input)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "PreconditionFailed") {
+		var (
+			opeErr  *smithy.OperationError
+			respErr *awshttp.ResponseError
+		)
+
+		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
+			respErr.Response.StatusCode == http.StatusPreconditionFailed {
 			return nil, ErrLockAlreadyHeld
-		} else {
-			return nil, err
 		}
+
+		return nil, err
 	}
 
 	l := &lock{
