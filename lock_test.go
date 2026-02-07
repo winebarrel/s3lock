@@ -29,7 +29,7 @@ func TestLock(t *testing.T) {
 	require.Regexp(t, `\w{8}-\w{4}-\w{4}-\w{4}-\w{12}`, body)
 
 	// Unlock
-	err = lock.Unlock(t.Context())
+	err = lock.Unlock()
 	require.NoError(t, err)
 
 	// Confirm that the lock object does not exist
@@ -37,7 +37,7 @@ func TestLock(t *testing.T) {
 	require.ErrorContains(t, err, "The specified key does not exist")
 
 	// Already unlocked
-	err = lock.Unlock(t.Context())
+	err = lock.Unlock()
 	require.ErrorIs(t, err, s3lock.ErrAlreadyUnlocked)
 }
 
@@ -59,7 +59,7 @@ func TestLockError(t *testing.T) {
 	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
 
 	// Unlock
-	err = lock.Unlock(t.Context())
+	err = lock.Unlock()
 	require.NoError(t, err)
 
 	// Other clients can lock it
@@ -105,7 +105,7 @@ func TestMarshalJSON(t *testing.T) {
 	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
 
 	// Unlock
-	err = lock.Unlock(t.Context())
+	err = lock.Unlock()
 	require.NoError(t, err)
 
 	// Confirm that the lock object does not exist
@@ -135,7 +135,7 @@ func TestMD5Collision(t *testing.T) {
 	require.NoError(t, err)
 
 	// Unlock with a different lock id
-	err = lock2.Unlock(t.Context())
+	err = lock2.Unlock()
 	require.ErrorContains(t, err, `lock id does not match, expected 'TEXTCOLLBYfGiJUETHQ4hEcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak' but got 'TEXTCOLLBYfGiJUETHQ4hAcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak'`)
 
 	// Confirm that the lock object exists
@@ -144,7 +144,7 @@ func TestMD5Collision(t *testing.T) {
 	require.Regexp(t, id1, body)
 
 	// Unlock with a same lock id
-	err = lock1.Unlock(t.Context())
+	err = lock1.Unlock()
 	require.NoError(t, err)
 
 	// Confirm that the lock object does not exist
@@ -179,7 +179,7 @@ func TestLockWait2ndOK(t *testing.T) {
 		require.NoError(t, err)
 		go func() {
 			time.Sleep(1 * time.Second)
-			err := lock.Unlock(t.Context())
+			err := lock.Unlock()
 			require.NoError(t, err)
 		}()
 	}

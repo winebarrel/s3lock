@@ -120,7 +120,11 @@ func (l *Lock) validate(ctx context.Context) error {
 	return nil
 }
 
-func (l *Lock) Unlock(ctx context.Context) error {
+func (l *Lock) Unlock() error {
+	return l.UnlockContext(context.Background())
+}
+
+func (l *Lock) UnlockContext(ctx context.Context) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
