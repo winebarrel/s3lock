@@ -175,7 +175,7 @@ func (l *Lock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-func NewFromLockJSON(s3Client *s3.Client, data []byte) (*Lock, error) {
+func NewLockFromJSON(s3Client *s3.Client, data []byte) (*Lock, error) {
 	j := lockJSON{}
 	err := json.Unmarshal(data, &j)
 

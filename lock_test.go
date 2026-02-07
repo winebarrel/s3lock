@@ -94,7 +94,7 @@ func TestMarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":"\\"\w{32}\\""}`, string(j))
 
-	lock, err = s3lock.NewFromLockJSON(s3cli, j)
+	lock, err = s3lock.NewLockFromJSON(s3cli, j)
 	require.NoError(t, err)
 	j2, err := lock.MarshalJSON()
 	require.NoError(t, err)
@@ -129,9 +129,9 @@ func TestMD5Collision(t *testing.T) {
 	etag = strings.ReplaceAll(etag, `"`, `\"`)
 
 	// Create locks with the same MD5 hash
-	lock1, err := s3lock.NewFromLockJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"`+id1+`","ETag":"`+etag+`"}`))
+	lock1, err := s3lock.NewLockFromJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"`+id1+`","ETag":"`+etag+`"}`))
 	require.NoError(t, err)
-	lock2, err := s3lock.NewFromLockJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"`+id2+`","ETag":"`+etag+`"}`))
+	lock2, err := s3lock.NewLockFromJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"`+id2+`","ETag":"`+etag+`"}`))
 	require.NoError(t, err)
 
 	// Unlock with a different lock id
@@ -243,7 +243,7 @@ func TestAlreadyUnlocked(t *testing.T) {
 	s3cli := testNewS3Client(t)
 
 	// Create lock from JSON
-	lock, err := s3lock.NewFromLockJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`))
+	lock, err := s3lock.NewLockFromJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`))
 	require.NoError(t, err)
 
 	// Unlock
