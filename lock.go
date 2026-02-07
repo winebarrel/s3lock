@@ -52,7 +52,7 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 		etag:   aws.ToString(output.ETag),
 	}
 
-	return l, err
+	return l, nil
 }
 
 type lock struct {
