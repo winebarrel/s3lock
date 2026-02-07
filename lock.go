@@ -3,14 +3,20 @@ package s3lock
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
 )
+
+var ErrLockAlreadyHeld = errors.New("lock already held")
 
 type Object struct {
 	s3     *s3.Client
@@ -41,6 +47,16 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 	output, err := obj.s3.PutObject(ctx, input)
 
 	if err != nil {
+		var (
+			opeErr  *smithy.OperationError
+			respErr *awshttp.ResponseError
+		)
+
+		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
+			respErr.Response.StatusCode == http.StatusPreconditionFailed {
+			return nil, errors.Join(ErrLockAlreadyHeld, err)
+		}
+
 		return nil, err
 	}
 
