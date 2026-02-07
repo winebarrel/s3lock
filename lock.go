@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -162,4 +163,46 @@ func JSONToLock(s3Client *s3.Client, data []byte) (*lock, error) {
 	}
 
 	return l, nil
+}
+
+var lockWaitInterval = 1 * time.Second
+
+func (obj *Object) LockWait(ctx context.Context) (*lock, error) {
+	// first time
+	lock, err := obj.Lock(ctx)
+
+	if err == nil {
+		return lock, nil
+	}
+
+	if !errors.Is(err, ErrLockAlreadyHeld) {
+		return nil, err
+	}
+
+	// after the second time
+	ticker := time.NewTicker(lockWaitInterval)
+	defer ticker.Stop()
+	var lastErr error
+
+L:
+	for {
+		select {
+		case <-ctx.Done():
+			break L
+		case <-ticker.C:
+			lock, err := obj.Lock(ctx)
+
+			if err == nil {
+				return lock, nil
+			}
+
+			if !errors.Is(err, ErrLockAlreadyHeld) {
+				return nil, err
+			}
+
+			lastErr = err
+		}
+	}
+
+	return nil, errors.Join(ErrLockAlreadyHeld, lastErr)
 }
