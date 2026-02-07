@@ -4,6 +4,8 @@
 
 s3lock is a locking command using S3.
 
+Exclusive control is implemented using [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
+
 ```sh
 $ s3lock lock s3://my-bucket/lock-object > object.lock
 
