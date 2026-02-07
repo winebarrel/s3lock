@@ -1,6 +1,6 @@
 services:
   localstack:
-    # https://github.com/adobe/S3Mockt
+    # https://github.com/adobe/S3Mock
     image: adobe/s3mock
     ports:
       - 9090:9090
