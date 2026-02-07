@@ -70,13 +70,15 @@ func (l *lock) validate(ctx context.Context) error {
 		IfMatch: aws.String(l.etag),
 	}
 
-	outut, err := l.s3.GetObject(ctx, input)
+	output, err := l.s3.GetObject(ctx, input)
 
 	if err != nil {
 		return err
 	}
 
-	b, err := io.ReadAll(outut.Body)
+	defer output.Body.Close()
+
+	b, err := io.ReadAll(output.Body)
 
 	if err != nil {
 		return err

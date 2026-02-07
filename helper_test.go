@@ -42,6 +42,8 @@ func testGetObject(t *testing.T, client *s3.Client, bukect string, key string) (
 		return "", err
 	}
 
+	defer output.Body.Close()
+
 	b, err := io.ReadAll(output.Body)
 
 	if err != nil {
