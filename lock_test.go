@@ -49,9 +49,8 @@ func TestLockError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Other clients cannot lock it
-	nolock, err := obj.Lock(t.Context())
-	require.NoError(t, err)
-	require.Nil(t, nolock)
+	_, err = obj.Lock(t.Context())
+	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
 
 	// Unlock
 	err = lock.Unlock(t.Context())
@@ -68,9 +67,8 @@ func TestLockFatal(t *testing.T) {
 	obj := s3lock.New(s3cli, "xxx-s3lock-test", "lock-obj")
 
 	// Fatal error: bucket does not exist
-	lock, err := obj.Lock(t.Context())
+	_, err := obj.Lock(t.Context())
 	require.ErrorContains(t, err, "The specified bucket does not exist")
-	require.Nil(t, lock)
 }
 
 func TestMarshalJSON(t *testing.T) {
@@ -96,9 +94,8 @@ func TestMarshalJSON(t *testing.T) {
 	require.Equal(t, j, j2)
 
 	// Other clients cannot lock it
-	nolock, err := obj.Lock(t.Context())
-	require.NoError(t, err)
-	require.Nil(t, nolock)
+	_, err = obj.Lock(t.Context())
+	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
 
 	// Unlock
 	err = lock.Unlock(t.Context())

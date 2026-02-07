@@ -3,6 +3,7 @@ package s3lock
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
+
+var ErrLockAlreadyHeld = errors.New("lock already held")
 
 type Object struct {
 	s3     *s3.Client
@@ -42,8 +45,7 @@ func (obj *Object) Lock(ctx context.Context) (*lock, error) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "PreconditionFailed") {
-			// failed to acquire lock
-			return nil, nil
+			return nil, ErrLockAlreadyHeld
 		} else {
 			return nil, err
 		}
