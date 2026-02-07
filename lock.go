@@ -76,7 +76,7 @@ func (l *lock) validate(ctx context.Context) error {
 		return err
 	}
 
-	defer output.Body.Close()
+	defer output.Body.Close() //nolint:errcheck
 
 	b, err := io.ReadAll(output.Body)
 
