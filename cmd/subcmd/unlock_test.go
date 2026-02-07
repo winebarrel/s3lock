@@ -43,7 +43,7 @@ func TestUnockCmd(t *testing.T) {
 	require.ErrorContains(t, err, "The specified key does not exist")
 }
 
-func TestUnockCmdA(t *testing.T) {
+func TestUnlockCmdAlreadyUnlocked(t *testing.T) {
 	s3cli := testNewS3Client(t)
 	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
