@@ -1,9 +1,11 @@
 package s3lock_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/winebarrel/s3lock"
@@ -144,4 +146,91 @@ func TestMD5Collision(t *testing.T) {
 	// Confirm that the lock object does not exist
 	_, err = testGetObject(t, s3cli, "s3lock-test", "lock-obj")
 	require.ErrorContains(t, err, "The specified key does not exist")
+}
+
+func TestLockWait1stOK(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	t.Cleanup(func() {
+		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+	})
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+	lock, err := obj.LockWait(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, lock)
+}
+
+func TestLockWait2ndOK(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	t.Cleanup(func() {
+		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+	})
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	{
+		lock, err := obj.Lock(t.Context())
+		require.NoError(t, err)
+		go func() {
+			time.Sleep(1 * time.Second)
+			err := lock.Unlock(t.Context())
+			require.NoError(t, err)
+		}()
+	}
+
+	lock, err := obj.LockWait(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, lock)
+}
+
+func TestLockWaitError(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	t.Cleanup(func() {
+		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+	})
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	// Not unlock
+	_, err := obj.Lock(t.Context())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	_, err = obj.LockWait(ctx)
+	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
+}
+
+func TestLockWaitContextError(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	t.Cleanup(func() {
+		testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+	})
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	// Not unlock
+	_, err := obj.Lock(t.Context())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 0)
+	defer cancel()
+	_, err = obj.LockWait(ctx)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
+}
+
+func TestLockWaitFatal(t *testing.T) {
+	s3cli := testNewS3Client(t)
+
+	obj := s3lock.New(s3cli, "xxx-s3lock-test", "lock-obj")
+
+	// Fatal error: bucket does not exist
+	_, err := obj.LockWait(t.Context())
+	require.NotErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
+	require.ErrorContains(t, err, "The specified bucket does not exist")
 }
