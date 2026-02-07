@@ -1,6 +1,7 @@
 # s3lock
 
 [![CI](https://github.com/winebarrel/s3lock/actions/workflows/ci.yml/badge.svg)](https://github.com/winebarrel/s3lock/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/winebarrel/s3lock.svg)](https://pkg.go.dev/github.com/winebarrel/s3lock)
 
 s3lock is a locking command using S3.
 
