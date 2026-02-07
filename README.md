@@ -68,3 +68,36 @@ Flags:
 ```
 
 </details>
+
+### Use as a library
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/winebarrel/s3lock"
+)
+
+func main() {
+	ctx := context.Background()
+
+	cfg, _ := config.LoadDefaultConfig(ctx)
+	s3cli := s3.NewFromConfig(cfg)
+
+	obj := s3lock.New(s3cli, "my-bucket", "lock-object")
+	lock, err := obj.Lock(ctx)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer lock.Unlock()
+
+	// ...
+}
+```
