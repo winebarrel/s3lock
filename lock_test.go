@@ -239,7 +239,7 @@ func TestLockWaitFatal(t *testing.T) {
 	require.ErrorContains(t, err, "The specified bucket does not exist")
 }
 
-func TestAlreadyLnlocked(t *testing.T) {
+func TestAlreadyUnlocked(t *testing.T) {
 	s3cli := testNewS3Client(t)
 
 	// Create lock from JSON
