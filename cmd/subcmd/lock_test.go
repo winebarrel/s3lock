@@ -57,14 +57,22 @@ func TestLockCmdWithWait(t *testing.T) {
 
 	cmd := &subcmd.LockCmd{
 		S3URL: &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
-		Wait:  1,
+		Wait:  3,
 	}
+
+	count := 0
 
 	httpmock.RegisterResponder(http.MethodPut, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=PutObject", func(req *http.Request) (*http.Response, error) {
 		require.Equal(t, `*`, req.Header.Get("If-None-Match"))
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 		require.Regexp(t, `\w{8}-\w{4}-\w{4}-\w{4}-\w{12}`, string(body))
+
+		if count == 0 {
+			count++
+			return httpmock.NewStringResponse(http.StatusPreconditionFailed, ""), nil
+		}
+
 		return httpmock.NewStringResponse(http.StatusOK, ""), nil
 	})
 
