@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,8 +26,10 @@ func TestLockCmd(t *testing.T) {
 	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
 	s3cli := s3.NewFromConfig(cfg)
 
+	lockFile := filepath.Join(t.TempDir(), "lock-obj.lock")
 	cmd := &subcmd.LockCmd{
-		S3URL: &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		S3URL:  &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		Output: lockFile,
 	}
 
 	httpmock.RegisterResponder(http.MethodPut, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=PutObject", func(req *http.Request) (*http.Response, error) {
@@ -44,7 +48,11 @@ func TestLockCmd(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":".*"}`, buf.String())
+	require.Contains(t, buf.String(), "s3://s3lock-test/lock-obj has been locked")
+
+	b, err := os.ReadFile(lockFile)
+	require.NoError(t, err)
+	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":".*"}`, string(b))
 }
 
 func TestLockCmdWithWait(t *testing.T) {
@@ -55,9 +63,11 @@ func TestLockCmdWithWait(t *testing.T) {
 	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
 	s3cli := s3.NewFromConfig(cfg)
 
+	lockFile := filepath.Join(t.TempDir(), "lock-obj.lock")
 	cmd := &subcmd.LockCmd{
-		S3URL: &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
-		Wait:  3,
+		S3URL:  &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		Wait:   3,
+		Output: lockFile,
 	}
 
 	count := 0
@@ -84,7 +94,11 @@ func TestLockCmdWithWait(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":".*"}`, buf.String())
+	require.Contains(t, buf.String(), "s3://s3lock-test/lock-obj has been locked")
+
+	b, err := os.ReadFile(lockFile)
+	require.NoError(t, err)
+	require.Regexp(t, `{"Bucket":"s3lock-test","Key":"lock-obj","Id":"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}","ETag":".*"}`, string(b))
 }
 
 func TestLockCmdLockAlreadyHeld(t *testing.T) {
@@ -95,8 +109,10 @@ func TestLockCmdLockAlreadyHeld(t *testing.T) {
 	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
 	s3cli := s3.NewFromConfig(cfg)
 
+	lockFile := filepath.Join(t.TempDir(), "lock-obj.lock")
 	cmd := &subcmd.LockCmd{
-		S3URL: &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		S3URL:  &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		Output: lockFile,
 	}
 
 	httpmock.RegisterResponder(http.MethodPut, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=PutObject", func(req *http.Request) (*http.Response, error) {
@@ -113,6 +129,8 @@ func TestLockCmdLockAlreadyHeld(t *testing.T) {
 	})
 
 	require.ErrorIs(t, err, s3lock.ErrLockAlreadyHeld)
+	_, err = os.Stat(lockFile)
+	require.True(t, os.IsNotExist(err))
 }
 
 func TestLockCmdFatal(t *testing.T) {
@@ -124,8 +142,10 @@ func TestLockCmdFatal(t *testing.T) {
 		config.WithRetryer(func() aws.Retryer { return &aws.NopRetryer{} }))
 	s3cli := s3.NewFromConfig(cfg)
 
+	lockFile := filepath.Join(t.TempDir(), "lock-obj.lock")
 	cmd := &subcmd.LockCmd{
-		S3URL: &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		S3URL:  &url.URL{Scheme: "s3", Host: "s3lock-test", Path: "/lock-obj"},
+		Output: lockFile,
 	}
 
 	httpmock.RegisterResponder(http.MethodPut, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=PutObject", func(req *http.Request) (*http.Response, error) {
@@ -142,4 +162,6 @@ func TestLockCmdFatal(t *testing.T) {
 	})
 
 	require.ErrorContains(t, err, "StatusCode: 500")
+	_, err = os.Stat(lockFile)
+	require.True(t, os.IsNotExist(err))
 }

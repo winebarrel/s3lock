@@ -24,12 +24,12 @@ func TestUnlockCmd(t *testing.T) {
 	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
 	s3cli := s3.NewFromConfig(cfg)
 
-	lockInfo := filepath.Join(t.TempDir(), "lock.info")
-	err := os.WriteFile(lockInfo, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
+	lockFile := filepath.Join(t.TempDir(), "lock.info")
+	err := os.WriteFile(lockFile, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
 	require.NoError(t, err)
 
 	cmd := &subcmd.UnlockCmd{
-		LockFile: lockInfo,
+		LockFile: lockFile,
 	}
 
 	var buf bytes.Buffer
@@ -53,7 +53,9 @@ func TestUnlockCmd(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Empty(t, buf.String())
+	require.Contains(t, buf.String(), "s3://s3lock-test/lock-obj has been unlocked")
+	_, err = os.Stat(lockFile)
+	require.True(t, os.IsNotExist(err))
 }
 
 func TestUnlockCmdAlreadyUnlocked(t *testing.T) {
@@ -64,12 +66,12 @@ func TestUnlockCmdAlreadyUnlocked(t *testing.T) {
 	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
 	s3cli := s3.NewFromConfig(cfg)
 
-	lockInfo := filepath.Join(t.TempDir(), "lock.info")
-	err := os.WriteFile(lockInfo, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
+	lockFile := filepath.Join(t.TempDir(), "lock.info")
+	err := os.WriteFile(lockFile, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
 	require.NoError(t, err)
 
 	cmd := &subcmd.UnlockCmd{
-		LockFile: lockInfo,
+		LockFile: lockFile,
 	}
 
 	httpmock.RegisterResponder(http.MethodGet, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=GetObject", func(req *http.Request) (*http.Response, error) {
@@ -83,4 +85,6 @@ func TestUnlockCmdAlreadyUnlocked(t *testing.T) {
 	})
 
 	require.ErrorIs(t, err, s3lock.ErrAlreadyUnlocked)
+	_, err = os.Stat(lockFile)
+	require.NoError(t, err)
 }

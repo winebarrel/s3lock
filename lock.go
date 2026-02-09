@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -84,6 +85,10 @@ type Lock struct {
 	key      string
 	id       string
 	etag     string
+}
+
+func (l *Lock) String() string {
+	return fmt.Sprintf("s3://%s/%s", l.bucket, l.key)
 }
 
 func (l *Lock) validate(ctx context.Context) error {
