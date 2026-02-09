@@ -124,7 +124,7 @@ func TestMD5Collision(t *testing.T) {
 
 	// Unlock with a different lock id
 	err = lock2.Unlock()
-	require.ErrorContains(t, err, `lock id does not match, expected 'TEXTCOLLBYfGiJUETHQ4hEcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak' but got 'TEXTCOLLBYfGiJUETHQ4hAcKSMd5zYpgqf1YRDhkmxHkhPWptrkoyz28wnI9V0aHeAuaKnak'`)
+	require.ErrorIs(t, err, s3lock.ErrLockMismatch)
 
 	// Confirm that the lock object exists
 	body, err := testGetObject(t, s3cli, "s3lock-test", "lock-obj")
@@ -138,6 +138,18 @@ func TestMD5Collision(t *testing.T) {
 	// Confirm that the lock object does not exist
 	_, err = testGetObject(t, s3cli, "s3lock-test", "lock-obj")
 	require.ErrorContains(t, err, "The specified key does not exist")
+}
+
+func TestLockMismatch(t *testing.T) {
+	s3cli := testNewS3Client(t)
+	testPutObject(t, s3cli, "s3lock-test", "lock-obj", "my-id")
+
+	lock, err := s3lock.NewLockFromJSON(s3cli, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"invalid"}`))
+	require.NoError(t, err)
+
+	// Unlock with a different ETag
+	err = lock.Unlock()
+	require.ErrorIs(t, err, s3lock.ErrLockMismatch)
 }
 
 func TestLockWait1stOK(t *testing.T) {

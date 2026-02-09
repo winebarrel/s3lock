@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -21,6 +20,7 @@ import (
 var (
 	ErrLockAlreadyHeld = errors.New("lock already held")
 	ErrAlreadyUnlocked = errors.New("already unlocked")
+	ErrLockMismatch    = errors.New("lock mismatch")
 )
 
 type Object struct {
@@ -105,9 +105,13 @@ func (l *Lock) validate(ctx context.Context) error {
 			respErr *awshttp.ResponseError
 		)
 
-		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
-			respErr.Response.StatusCode == http.StatusNotFound {
-			return ErrAlreadyUnlocked
+		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) {
+			switch respErr.Response.StatusCode {
+			case http.StatusNotFound:
+				return ErrAlreadyUnlocked
+			case http.StatusPreconditionFailed:
+				return ErrLockMismatch
+			}
 		}
 
 		return err
@@ -121,10 +125,8 @@ func (l *Lock) validate(ctx context.Context) error {
 		return err
 	}
 
-	body := string(b)
-
-	if body != l.id {
-		return fmt.Errorf("lock id does not match, expected '%s' but got '%s'", l.id, body)
+	if string(b) != l.id {
+		return ErrLockMismatch
 	}
 
 	return nil
