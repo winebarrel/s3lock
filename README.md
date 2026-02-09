@@ -16,7 +16,7 @@ create lock-object.lock
 $ s3lock lock s3://my-bucket/lock-object
 s3lock: error: lock already held
 
-$ s3lock unlock object.lock
+$ s3lock unlock lock-object.lock
 s3://my-bucket/lock-object has been unlocked
 delete lock-object.lock
 ```
