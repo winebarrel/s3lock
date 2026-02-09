@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,13 +13,18 @@ import (
 )
 
 type LockCmd struct {
-	S3URL *url.URL `arg:"" name:"s3-url" help:"S3 URL of the object to lock, e.g., s3://bucket/lock-obj-key"`
-	Wait  uint     `short:"w" help:"Fail if the lock cannot be acquired within seconds"`
+	S3URL  *url.URL `arg:"" name:"s3-url" help:"S3 URL of the object to lock, e.g., s3://bucket/lock-obj-key"`
+	Wait   uint     `short:"w" help:"Fail if the lock cannot be acquired within seconds."`
+	Output string   `short:"o" help:"Lock file output path (default: <lock-obj-key>.lock)"`
 }
 
 func (cmd *LockCmd) AfterApply() error {
 	if cmd.S3URL.Scheme != "s3" || cmd.S3URL.Host == "" || strings.TrimPrefix(cmd.S3URL.Path, "/") == "" {
 		return fmt.Errorf("invalid S3 URL: %s", cmd.S3URL)
+	}
+
+	if cmd.Output == "" {
+		cmd.Output = filepath.Base(cmd.S3URL.Path) + ".lock"
 	}
 
 	return nil
@@ -42,13 +49,21 @@ func (cmd *LockCmd) Run(cmdCtx *Context) error {
 		return err
 	}
 
+	fmt.Fprintf(cmdCtx.Output, "%s has been locked\n", cmd.S3URL) //nolint:errcheck
+
 	j, err := lock.MarshalJSON()
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintln(cmdCtx.Output, string(j)) //nolint:errcheck
+	err = os.WriteFile(cmd.Output, j, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmdCtx.Output, "create %s\n", cmd.Output) //nolint:errcheck
 
 	return nil
 }

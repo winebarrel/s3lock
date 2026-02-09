@@ -86,6 +86,10 @@ type Lock struct {
 	etag     string
 }
 
+func (l *Lock) String() string {
+	return fmt.Sprintf("s3://%s/%s", l.bucket, l.key)
+}
+
 func (l *Lock) validate(ctx context.Context) error {
 	if l.unlocked {
 		return ErrAlreadyUnlocked

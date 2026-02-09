@@ -8,16 +8,17 @@ s3lock is a locking command using S3.
 Exclusive control is implemented using [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
 
 ```sh
-$ s3lock lock s3://my-bucket/lock-object > object.lock
+$ s3lock lock s3://my-bucket/lock-object
+s3://my-bucket/lock-object has been locked
+create lock-object.lock
 
 # A locked object cannot be double-locked
 $ s3lock lock s3://my-bucket/lock-object
 s3lock: error: lock already held
 
 $ s3lock unlock object.lock
-
-$ s3lock unlock object.lock
-s3lock: error: already unlocked
+s3://my-bucket/lock-object has been unlocked
+delete lock-object.lock
 ```
 
 ## Installation
@@ -54,10 +55,11 @@ Arguments:
   <s3-url>    S3 URL of the object to lock, e.g., s3://bucket/lock-obj-key
 
 Flags:
-  -h, --help         Show context-sensitive help.
+  -h, --help             Show context-sensitive help.
       --version
 
-  -w, --wait=UINT    Fail if the lock cannot be acquired within seconds
+  -w, --wait=UINT        Fail if the lock cannot be acquired within seconds.
+  -o, --output=STRING    Lock file output path. (default: <lock-obj-key>.lock)
 ```
 
 </details>
@@ -69,7 +71,7 @@ Flags:
 Usage: s3lock unlock <lock-file> [flags]
 
 Arguments:
-  <lock-file>    Lock info file path
+  <lock-file>    Lock file path.
 
 Flags:
   -h, --help       Show context-sensitive help.
