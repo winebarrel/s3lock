@@ -100,16 +100,6 @@ func (l *Lock) validate(ctx context.Context) error {
 	output, err := l.s3.GetObject(ctx, input)
 
 	if err != nil {
-		var (
-			opeErr  *smithy.OperationError
-			respErr *awshttp.ResponseError
-		)
-
-		if errors.As(err, &opeErr) && errors.As(opeErr, &respErr) &&
-			respErr.Response.StatusCode == http.StatusNotFound {
-			return ErrAlreadyUnlocked
-		}
-
 		return err
 	}
 

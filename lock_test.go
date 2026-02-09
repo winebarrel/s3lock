@@ -218,7 +218,7 @@ func TestLockWaitFatal(t *testing.T) {
 	require.ErrorContains(t, err, "The specified bucket does not exist")
 }
 
-func TestAlreadyUnlocked(t *testing.T) {
+func TestNoSuchKey(t *testing.T) {
 	s3cli := testNewS3Client(t)
 	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
 
@@ -228,5 +228,5 @@ func TestAlreadyUnlocked(t *testing.T) {
 
 	// Unlock
 	err = lock.Unlock()
-	require.ErrorIs(t, err, s3lock.ErrAlreadyUnlocked)
+	require.ErrorContains(t, err, "NoSuchKey")
 }
