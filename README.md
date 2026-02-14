@@ -107,7 +107,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-defer lock.Unlock()
+	defer lock.Unlock()
 
 	// ...
 }
