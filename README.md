@@ -21,62 +21,6 @@ s3://my-bucket/lock-object has been unlocked
 delete lock-object.lock
 ```
 
-## Lock Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as User
-    participant C as s3lock CLI
-    participant O as s3lock.Object
-    participant S as Amazon S3
-
-    U->>C: s3lock lock s3://bucket/key [--wait N]
-    C->>O: New(s3Client, bucket, key)
-
-    alt No --wait option (or 0)
-        C->>O: Lock(ctx)
-        O->>S: PutObject(body=uuid, If-None-Match="*")
-        alt Object does not exist
-            S-->>O: 200 OK (ETag)
-            O-->>C: Lock{id, etag}
-            C->>C: Save lock JSON to output file
-            C-->>U: locked + lock file created
-        else Lock already exists
-            S-->>O: 412 Precondition Failed
-            O-->>C: ErrLockAlreadyHeld
-            C-->>U: error: lock already held
-        end
-    else With --wait N
-        C->>C: context.WithTimeout(N seconds)
-        C->>O: LockWait(ctx)
-        O->>S: PutObject(... If-None-Match="*") (first attempt)
-        alt First attempt succeeds
-            S-->>O: 200 OK
-            O-->>C: Lock{id, etag}
-            C->>C: Save lock JSON to output file
-            C-->>U: locked + lock file created
-        else First attempt returns ErrLockAlreadyHeld
-            loop Every LockWaitInterval (default: 1s)
-                O->>S: PutObject(... If-None-Match="*")
-                alt Succeeds
-                    S-->>O: 200 OK
-                    O-->>C: Lock{id, etag}
-                    C->>C: Save lock JSON to output file
-                    C-->>U: locked + lock file created
-                else Still locked
-                    S-->>O: 412 Precondition Failed
-                    O-->>O: Keep ErrLockAlreadyHeld and continue
-                end
-            end
-            alt Timeout / context done
-                O-->>C: Last ErrLockAlreadyHeld
-                C-->>U: error: lock already held
-            end
-        end
-    end
-```
-
 ## Installation
 
 ```
@@ -163,8 +107,64 @@ func main() {
 		log.Fatal(err)
 	}
 
-	defer lock.Unlock()
+defer lock.Unlock()
 
 	// ...
 }
+```
+
+## Lock Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant C as s3lock CLI
+    participant O as s3lock.Object
+    participant S as Amazon S3
+
+    U->>C: s3lock lock s3://bucket/key [--wait N]
+    C->>O: New(s3Client, bucket, key)
+
+    alt No --wait option (or 0)
+        C->>O: Lock(ctx)
+        O->>S: PutObject(body=uuid, If-None-Match="*")
+        alt Object does not exist
+            S-->>O: 200 OK (ETag)
+            O-->>C: Lock{id, etag}
+            C->>C: Save lock JSON to output file
+            C-->>U: locked + lock file created
+        else Lock already exists
+            S-->>O: 412 Precondition Failed
+            O-->>C: ErrLockAlreadyHeld
+            C-->>U: error: lock already held
+        end
+    else With --wait N
+        C->>C: context.WithTimeout(N seconds)
+        C->>O: LockWait(ctx)
+        O->>S: PutObject(... If-None-Match="*") (first attempt)
+        alt First attempt succeeds
+            S-->>O: 200 OK
+            O-->>C: Lock{id, etag}
+            C->>C: Save lock JSON to output file
+            C-->>U: locked + lock file created
+        else First attempt returns ErrLockAlreadyHeld
+            loop Every LockWaitInterval (default: 1s)
+                O->>S: PutObject(... If-None-Match="*")
+                alt Succeeds
+                    S-->>O: 200 OK
+                    O-->>C: Lock{id, etag}
+                    C->>C: Save lock JSON to output file
+                    C-->>U: locked + lock file created
+                else Still locked
+                    S-->>O: 412 Precondition Failed
+                    O-->>O: Keep ErrLockAlreadyHeld and continue
+                end
+            end
+            alt Timeout / context done
+                O-->>C: Last ErrLockAlreadyHeld
+                C-->>U: error: lock already held
+            end
+        end
+    end
 ```
