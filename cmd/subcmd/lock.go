@@ -14,8 +14,9 @@ import (
 
 type LockCmd struct {
 	S3URL  *url.URL `arg:"" name:"s3-url" help:"S3 URL of the object to lock, e.g., s3://bucket/lock-obj-key"`
-	Wait   uint     `short:"w" help:"Fail if the lock cannot be acquired within seconds."`
+	Wait   uint     `short:"w" help:"Wait for the specified number of seconds until it locks."`
 	Output string   `short:"o" help:"Lock file output path (default: <lock-obj-key>.lock)"`
+	Force  bool     `short:"f" help:"Force lock."`
 }
 
 func (cmd *LockCmd) AfterApply() error {
@@ -39,10 +40,18 @@ func (cmd *LockCmd) Run(cmdCtx *Context) error {
 
 	if cmd.Wait > 0 {
 		ctx, cancel := context.WithTimeout(ctx, time.Duration(cmd.Wait)*time.Second)
-		lock, err = lockObj.LockWait(ctx)
+		if cmd.Force {
+			lock, err = lockObj.ForceLockWait(ctx)
+		} else {
+			lock, err = lockObj.LockWait(ctx)
+		}
 		cancel()
 	} else {
-		lock, err = lockObj.Lock(ctx)
+		if cmd.Force {
+			lock, err = lockObj.ForceLock(ctx)
+		} else {
+			lock, err = lockObj.Lock(ctx)
+		}
 	}
 
 	if err != nil {

@@ -88,3 +88,98 @@ func TestUnlockCmdAlreadyUnlocked(t *testing.T) {
 	_, err = os.Stat(lockFile)
 	require.NoError(t, err)
 }
+
+func TestUnlockCmdIgnoreAlreadyUnlocked(t *testing.T) {
+	hc := &http.Client{}
+	httpmock.ActivateNonDefault(hc)
+	t.Cleanup(func() { httpmock.DeactivateNonDefault(hc) })
+
+	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
+	s3cli := s3.NewFromConfig(cfg)
+
+	lockFile := filepath.Join(t.TempDir(), "lock.info")
+	err := os.WriteFile(lockFile, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
+	require.NoError(t, err)
+
+	cmd := &subcmd.UnlockCmd{
+		LockFile: lockFile,
+		Force:    true,
+	}
+
+	httpmock.RegisterResponder(http.MethodGet, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=GetObject", func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, `"my-etag"`, req.Header.Get("If-Match"))
+		return httpmock.NewStringResponse(http.StatusNotFound, ""), nil
+	})
+
+	err = cmd.Run(&subcmd.Context{
+		S3:     s3cli,
+		Output: io.Discard,
+	})
+
+	require.NoError(t, err, s3lock.ErrAlreadyUnlocked)
+	_, err = os.Stat(lockFile)
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestUnlockCmdLockMismatch(t *testing.T) {
+	hc := &http.Client{}
+	httpmock.ActivateNonDefault(hc)
+	t.Cleanup(func() { httpmock.DeactivateNonDefault(hc) })
+
+	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
+	s3cli := s3.NewFromConfig(cfg)
+
+	lockFile := filepath.Join(t.TempDir(), "lock.info")
+	err := os.WriteFile(lockFile, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
+	require.NoError(t, err)
+
+	cmd := &subcmd.UnlockCmd{
+		LockFile: lockFile,
+	}
+
+	httpmock.RegisterResponder(http.MethodGet, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=GetObject", func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, `"my-etag"`, req.Header.Get("If-Match"))
+		return httpmock.NewStringResponse(http.StatusPreconditionFailed, ""), nil
+	})
+
+	err = cmd.Run(&subcmd.Context{
+		S3:     s3cli,
+		Output: io.Discard,
+	})
+
+	require.ErrorIs(t, err, s3lock.ErrLockMismatch)
+	_, err = os.Stat(lockFile)
+	require.NoError(t, err)
+}
+
+func TestUnlockCmdIgnoreLockMismatch(t *testing.T) {
+	hc := &http.Client{}
+	httpmock.ActivateNonDefault(hc)
+	t.Cleanup(func() { httpmock.DeactivateNonDefault(hc) })
+
+	cfg, _ := config.LoadDefaultConfig(t.Context(), config.WithHTTPClient(hc))
+	s3cli := s3.NewFromConfig(cfg)
+
+	lockFile := filepath.Join(t.TempDir(), "lock.info")
+	err := os.WriteFile(lockFile, []byte(`{"Bucket":"s3lock-test","Key":"lock-obj","Id":"my-id","ETag":"\"my-etag\""}`), 0600)
+	require.NoError(t, err)
+
+	cmd := &subcmd.UnlockCmd{
+		LockFile: lockFile,
+		Force:    true,
+	}
+
+	httpmock.RegisterResponder(http.MethodGet, "https://s3lock-test.s3.us-east-1.amazonaws.com/lock-obj?x-id=GetObject", func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, `"my-etag"`, req.Header.Get("If-Match"))
+		return httpmock.NewStringResponse(http.StatusPreconditionFailed, ""), nil
+	})
+
+	err = cmd.Run(&subcmd.Context{
+		S3:     s3cli,
+		Output: io.Discard,
+	})
+
+	require.NoError(t, err)
+	_, err = os.Stat(lockFile)
+	require.True(t, os.IsNotExist(err))
+}

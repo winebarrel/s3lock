@@ -40,14 +40,17 @@ func New(s3Client *s3.Client, bucket string, key string) *Object {
 	return obj
 }
 
-func (obj *Object) Lock(ctx context.Context) (*Lock, error) {
+func (obj *Object) lock0(ctx context.Context, force bool) (*Lock, error) {
 	id := uuid.NewString()
 
 	input := &s3.PutObjectInput{
-		Body:        strings.NewReader(id),
-		Bucket:      aws.String(obj.bucket),
-		Key:         aws.String(obj.key),
-		IfNoneMatch: aws.String("*"),
+		Body:   strings.NewReader(id),
+		Bucket: aws.String(obj.bucket),
+		Key:    aws.String(obj.key),
+	}
+
+	if !force {
+		input.IfNoneMatch = aws.String("*")
 	}
 
 	output, err := obj.s3.PutObject(ctx, input)
@@ -75,6 +78,14 @@ func (obj *Object) Lock(ctx context.Context) (*Lock, error) {
 	}
 
 	return l, nil
+}
+
+func (obj *Object) Lock(ctx context.Context) (*Lock, error) {
+	return obj.lock0(ctx, false)
+}
+
+func (obj *Object) ForceLock(ctx context.Context) (*Lock, error) {
+	return obj.lock0(ctx, true)
 }
 
 type Lock struct {
@@ -203,9 +214,9 @@ func NewLockFromJSON(s3Client *s3.Client, data []byte) (*Lock, error) {
 
 var LockWaitInterval = 1 * time.Second
 
-func (obj *Object) LockWait(ctx context.Context) (*Lock, error) {
+func (obj *Object) lockWait0(ctx context.Context, force bool) (*Lock, error) {
 	// first time
-	lock, err := obj.Lock(ctx)
+	lock, err := obj.lock0(ctx, false)
 
 	if err == nil {
 		return lock, nil
@@ -226,19 +237,35 @@ L:
 		case <-ctx.Done():
 			break L
 		case <-ticker.C:
-			lock, err := obj.Lock(ctx)
+			lock, err := obj.lock0(ctx, false)
 
 			if err == nil {
 				return lock, nil
 			}
 
-			if !errors.Is(err, ErrLockAlreadyHeld) {
+			lastErr = err
+
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				break L
+			} else if errors.Is(err, ErrLockAlreadyHeld) {
+				continue
+			} else {
 				return nil, err
 			}
-
-			lastErr = err
 		}
 	}
 
+	if force && (lastErr == nil || errors.Is(err, ErrLockAlreadyHeld) || errors.Is(lastErr, context.DeadlineExceeded)) {
+		return obj.lock0(context.Background(), true)
+	}
+
 	return nil, lastErr
+}
+
+func (obj *Object) LockWait(ctx context.Context) (*Lock, error) {
+	return obj.lockWait0(ctx, false)
+}
+
+func (obj *Object) ForceLockWait(ctx context.Context) (*Lock, error) {
+	return obj.lockWait0(ctx, true)
 }
