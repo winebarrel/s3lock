@@ -16,7 +16,7 @@ type LockCmd struct {
 	S3URL  *url.URL `arg:"" name:"s3-url" help:"S3 URL of the object to lock, e.g., s3://bucket/lock-obj-key"`
 	Wait   uint     `short:"w" help:"Wait for the specified number of seconds until it locks."`
 	Output string   `short:"o" help:"Lock file output path (default: <lock-obj-key>.lock)"`
-	Force  bool     `short:"f" help:"Force lock."`
+	Force  bool     `short:"f" help:"Force lock by overwriting any existing lock."`
 }
 
 func (cmd *LockCmd) AfterApply() error {
