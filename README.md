@@ -60,7 +60,7 @@ Flags:
 
   -w, --wait=UINT        Wait for the specified number of seconds until it locks.
   -o, --output=STRING    Lock file output path (default: <lock-obj-key>.lock)
-  -f, --force            Force lock.
+  -f, --force            Force lock by overwriting any existing lock (bypasses the If-None-Match check).
 ```
 
 </details>
