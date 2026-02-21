@@ -78,7 +78,7 @@ Flags:
   -h, --help       Show context-sensitive help.
       --version
 
-  -f, --force      Ignore unlocked errors and lock mismatch errors
+  -f, --force      Ignore unlocked errors and lock mismatch errors.
 ```
 
 </details>
