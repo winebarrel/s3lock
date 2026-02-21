@@ -10,7 +10,7 @@ import (
 
 type UnlockCmd struct {
 	LockFile string `arg:"" help:"Lock file path."`
-	Force    bool   `short:"f" help:"Ignore unlocked errors and lock mismatch errors"`
+	Force    bool   `short:"f" help:"Ignore unlocked errors and lock mismatch errors."`
 }
 
 func (cmd *UnlockCmd) Run(cmdCtx *Context) error {
