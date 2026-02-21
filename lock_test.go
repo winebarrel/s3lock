@@ -242,3 +242,41 @@ func TestAlreadyUnlocked(t *testing.T) {
 	err = lock.Unlock()
 	require.ErrorIs(t, err, s3lock.ErrAlreadyUnlocked)
 }
+
+func TestForceLock(t *testing.T) {
+	s3cli := testNewS3Client(t)
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	// Lock
+	lock, err := obj.Lock(t.Context())
+	require.NoError(t, err)
+
+	// Force lock
+	forceLock, err := obj.ForceLock(t.Context())
+	require.NoError(t, err)
+
+	// Unlock
+	err = lock.Unlock()
+	require.ErrorIs(t, err, s3lock.ErrLockMismatch)
+
+	err = forceLock.Unlock()
+	require.NoError(t, err)
+}
+
+func TestForceLockWait(t *testing.T) {
+	s3cli := testNewS3Client(t)
+	testDeleteObject(t, s3cli, "s3lock-test", "lock-obj")
+
+	obj := s3lock.New(s3cli, "s3lock-test", "lock-obj")
+
+	// Not unlock
+	_, err := obj.Lock(t.Context())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	_, err = obj.ForceLockWait(ctx)
+	require.NoError(t, err)
+}

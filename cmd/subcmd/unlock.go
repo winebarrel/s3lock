@@ -1,6 +1,7 @@
 package subcmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 
 type UnlockCmd struct {
 	LockFile string `arg:"" help:"Lock file path."`
+	Force    bool   `short:"f" help:"Ignore unlocked errors and lock mismatch errors."`
 }
 
 func (cmd *UnlockCmd) Run(cmdCtx *Context) error {
@@ -27,7 +29,9 @@ func (cmd *UnlockCmd) Run(cmdCtx *Context) error {
 	err = lock.Unlock()
 
 	if err != nil {
-		return err
+		if !cmd.Force || !errors.Is(err, s3lock.ErrAlreadyUnlocked) && !errors.Is(err, s3lock.ErrLockMismatch) {
+			return err
+		}
 	}
 
 	fmt.Fprintf(cmdCtx.Output, "%s has been unlocked\n", lock) //nolint:errcheck

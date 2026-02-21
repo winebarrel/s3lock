@@ -58,8 +58,9 @@ Flags:
   -h, --help             Show context-sensitive help.
       --version
 
-  -w, --wait=UINT        Fail if the lock cannot be acquired within seconds.
-  -o, --output=STRING    Lock file output path. (default: <lock-obj-key>.lock)
+  -w, --wait=UINT        Wait for the specified number of seconds until it locks.
+  -o, --output=STRING    Lock file output path (default: <lock-obj-key>.lock)
+  -f, --force            Force lock by overwriting any existing lock.
 ```
 
 </details>
@@ -76,6 +77,8 @@ Arguments:
 Flags:
   -h, --help       Show context-sensitive help.
       --version
+
+  -f, --force      Ignore unlocked errors and lock mismatch errors.
 ```
 
 </details>
