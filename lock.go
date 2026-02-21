@@ -255,7 +255,7 @@ L:
 		}
 	}
 
-	if force && (lastErr == nil || errors.Is(err, ErrLockAlreadyHeld) || errors.Is(lastErr, context.DeadlineExceeded)) {
+	if force && (lastErr == nil || errors.Is(lastErr, ErrLockAlreadyHeld) || errors.Is(lastErr, context.DeadlineExceeded)) {
 		return obj.lock0(context.Background(), true)
 	}
 
