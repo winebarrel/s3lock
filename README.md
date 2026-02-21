@@ -126,10 +126,10 @@ sequenceDiagram
     participant O as s3lock.Object
     participant S as Amazon S3
 
-    U->>C: s3lock lock s3://bucket/key [--wait N]
+    U->>C: s3lock lock s3://bucket/key [--wait N] [--force]
     C->>O: New(s3Client, bucket, key)
 
-    alt No --wait option (or 0)
+    alt No --wait, no --force
         C->>O: Lock(ctx)
         O->>S: PutObject(body=uuid, If-None-Match="*")
         alt Object does not exist
@@ -142,32 +142,126 @@ sequenceDiagram
             O-->>C: ErrLockAlreadyHeld
             C-->>U: error: lock already held
         end
-    else With --wait N
+    else --force only
+        C->>O: ForceLock(ctx)
+        O->>S: PutObject(body=uuid)
+        S-->>O: 200 OK (ETag)
+        O-->>C: Lock{id, etag}
+        C->>C: Save lock JSON to output file
+        C-->>U: locked + lock file created
+    else --wait N only
         C->>C: context.WithTimeout(N seconds)
         C->>O: LockWait(ctx)
-        O->>S: PutObject(... If-None-Match="*") (first attempt)
+        O->>S: PutObject(body=uuid, If-None-Match="*")
         alt First attempt succeeds
-            S-->>O: 200 OK
+            S-->>O: 200 OK (ETag)
             O-->>C: Lock{id, etag}
             C->>C: Save lock JSON to output file
             C-->>U: locked + lock file created
         else First attempt returns ErrLockAlreadyHeld
+            S-->>O: 412 Precondition Failed
             loop Every LockWaitInterval (default: 1s)
-                O->>S: PutObject(... If-None-Match="*")
+                O->>S: PutObject(body=uuid, If-None-Match="*")
                 alt Succeeds
-                    S-->>O: 200 OK
+                    S-->>O: 200 OK (ETag)
                     O-->>C: Lock{id, etag}
                     C->>C: Save lock JSON to output file
                     C-->>U: locked + lock file created
                 else Still locked
                     S-->>O: 412 Precondition Failed
-                    O-->>O: Keep ErrLockAlreadyHeld and continue
+                    O-->>O: Continue retrying
                 end
             end
             alt Timeout / context done
-                O-->>C: Last ErrLockAlreadyHeld
+                O-->>C: ErrLockAlreadyHeld
                 C-->>U: error: lock already held
             end
+        end
+    else --wait N --force
+        C->>C: context.WithTimeout(N seconds)
+        C->>O: ForceLockWait(ctx)
+        O->>S: PutObject(body=uuid, If-None-Match="*")
+        alt First attempt succeeds
+            S-->>O: 200 OK (ETag)
+            O-->>C: Lock{id, etag}
+            C->>C: Save lock JSON to output file
+            C-->>U: locked + lock file created
+        else First attempt returns ErrLockAlreadyHeld
+            S-->>O: 412 Precondition Failed
+            loop Every LockWaitInterval (default: 1s)
+                O->>S: PutObject(body=uuid, If-None-Match="*")
+                alt Succeeds
+                    S-->>O: 200 OK (ETag)
+                    O-->>C: Lock{id, etag}
+                    C->>C: Save lock JSON to output file
+                    C-->>U: locked + lock file created
+                else Still locked
+                    S-->>O: 412 Precondition Failed
+                    O-->>O: Continue retrying
+                end
+            end
+            alt Timeout / context done
+                O->>S: PutObject(body=uuid) [force, no If-None-Match]
+                S-->>O: 200 OK (ETag)
+                O-->>C: Lock{id, etag}
+                C->>C: Save lock JSON to output file
+                C-->>U: locked + lock file created
+            end
+        end
+    end
+```
+
+## Unlock Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant C as s3lock CLI
+    participant L as s3lock.Lock
+    participant S as Amazon S3
+
+    U->>C: s3lock unlock lock-file [--force]
+    C->>C: Read lock file JSON
+    C->>L: NewLockFromJSON(s3Client, data)
+    C->>L: Unlock()
+
+    L->>L: validate(ctx)
+    L->>S: GetObject(If-Match=etag)
+
+    alt 200 OK and body matches id
+        S-->>L: 200 OK (body=id)
+        L->>S: DeleteObject(If-Match=etag)
+        S-->>L: Success
+        L-->>C: nil
+        C->>C: Delete lock file
+        C-->>U: unlocked + lock file deleted
+    else 404 Not Found
+        S-->>L: 404 Not Found
+        L-->>C: ErrAlreadyUnlocked
+        alt --force
+            C->>C: Ignore error, delete lock file
+            C-->>U: unlocked + lock file deleted
+        else No --force
+            C-->>U: error: already unlocked
+        end
+    else 412 Precondition Failed (ETag mismatch)
+        S-->>L: 412 Precondition Failed
+        L-->>C: ErrLockMismatch
+        alt --force
+            C->>C: Ignore error, delete lock file
+            C-->>U: unlocked + lock file deleted
+        else No --force
+            C-->>U: error: lock mismatch
+        end
+    else 200 OK but body does not match id
+        S-->>L: 200 OK (body≠id)
+        L-->>C: ErrLockMismatch
+        alt --force
+            C->>C: Ignore error, delete lock file
+            C-->>U: unlocked + lock file deleted
+        else No --force
+            C-->>U: error: lock mismatch
         end
     end
 ```
