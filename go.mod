@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.10
 	github.com/aws/aws-sdk-go-v2/config v1.32.21
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.103.0
-	github.com/aws/smithy-go v1.26.0
+	github.com/aws/smithy-go v1.27.0
 	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/stretchr/testify v1.11.1
